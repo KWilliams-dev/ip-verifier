@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"ip-verifier/internal/domain"
+	apperrors "ip-verifier/internal/errors"
 )
 
 type ipVerifierService struct {
@@ -21,7 +21,7 @@ func NewIPVerifierService(repo domain.IPVerifierRepo) domain.IPVerifierService {
 func (s *ipVerifierService) VerifyIP(ctx context.Context, ip string, allowedCountries []string) (*domain.VerifyResult, error) {
 	// Validate input
 	if len(allowedCountries) == 0 {
-		return nil, fmt.Errorf("allowed_countries cannot be empty")
+		return nil, apperrors.NewValidationError("allowed_countries cannot be empty", nil)
 	}
 
 	// Get country for IP address
@@ -48,4 +48,9 @@ func contains(slice []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// HealthCheck verifies the repository is healthy
+func (s *ipVerifierService) HealthCheck(ctx context.Context) error {
+	return s.repo.HealthCheck(ctx)
 }
