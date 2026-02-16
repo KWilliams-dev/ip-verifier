@@ -3,19 +3,19 @@
 ## Running the Application
 ```bash
 # Run the application
-go run cmd/retrovault-api/main.go
+go run cmd/ip-verifier-api/main.go
 
 # Build the application
-go build -o retrovault cmd/retrovault-api/main.go
+go build -o ip-verifier cmd/ip-verifier-api/main.go
 
 # Run the built binary
-./retrovault
+./ip-verifier
 ```
 
 ## Dependency Management
 ```bash
 # Initialize go module
-go mod init github.com/KWilliams-dev/retro-vault
+go mod init github.com/KWilliams-dev/ip-verifier
 
 # Add a dependency
 go get github.com/gin-gonic/gin
@@ -23,6 +23,7 @@ go get gorm.io/gorm
 go get gorm.io/driver/postgres
 go get github.com/joho/godotenv
 go get github.com/lib/pq
+go get github.com/oschwald/geoip2-golang
 
 # Download all dependencies
 go mod download
