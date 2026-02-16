@@ -58,7 +58,7 @@ func TestHealthEndpoint(t *testing.T) {
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	assert.JSONEq(t, `{"status":"ok"}`, string(body))
+	assert.JSONEq(t, `{"status":"healthy"}`, string(body))
 }
 
 func TestVerifyIP_ValidIPInAllowedCountries(t *testing.T) {
