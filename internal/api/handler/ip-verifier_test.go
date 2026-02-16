@@ -2,8 +2,10 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"ip-verifier/internal/domain"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,43 +14,41 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// MockIPVerifierService is a mock implementation of domain.IPVerifierService
+type MockIPVerifierService struct {
+	VerifyIPFunc   func(ctx context.Context, ip string, allowedCountries []string) (*domain.VerifyResult, error)
+	HealthCheckFunc func(ctx context.Context) error
+}
+
+func (m *MockIPVerifierService) VerifyIP(ctx context.Context, ip string, allowedCountries []string) (*domain.VerifyResult, error) {
+	if m.VerifyIPFunc != nil {
+		return m.VerifyIPFunc(ctx, ip, allowedCountries)
+	}
+	return nil, nil
+}
+
+func (m *MockIPVerifierService) HealthCheck(ctx context.Context) error {
+	if m.HealthCheckFunc != nil {
+		return m.HealthCheckFunc(ctx)
+	}
+	return nil
+}
+
 func TestVerifyIP_Success_Allowed(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	mockFunc := func(ipAddress string) (string, error) {
-		return "US", nil
+	mockService := &MockIPVerifierService{
+		VerifyIPFunc: func(ctx context.Context, ip string, allowedCountries []string) (*domain.VerifyResult, error) {
+			return &domain.VerifyResult{
+				IP:      ip,
+				Country: "US",
+				Allowed: true,
+			}, nil
+		},
 	}
 
 	router := gin.Default()
-	router.POST("/verify", func(c *gin.Context) {
-		var verifyReq VerifyRequest
-
-		if err := c.ShouldBindJSON(&verifyReq); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		country, err := mockFunc(verifyReq.IP)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		allowed := false
-		for _, ac := range verifyReq.AllowedCountries {
-			if ac == country {
-				allowed = true
-				break
-			}
-		}
-
-		resp := VerifyResponse{
-			IP:      verifyReq.IP,
-			Country: country,
-			Allowed: allowed,
-		}
-		c.JSON(http.StatusOK, resp)
-	})
+	router.POST("/verify", VerifyIP(mockService))
 
 	reqBody := VerifyRequest{
 		IP:               "8.8.8.8",
@@ -74,40 +74,18 @@ func TestVerifyIP_Success_Allowed(t *testing.T) {
 func TestVerifyIP_Success_NotAllowed(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	mockFunc := func(ipAddress string) (string, error) {
-		return "CN", nil
+	mockService := &MockIPVerifierService{
+		VerifyIPFunc: func(ctx context.Context, ip string, allowedCountries []string) (*domain.VerifyResult, error) {
+			return &domain.VerifyResult{
+				IP:      ip,
+				Country: "CN",
+				Allowed: false,
+			}, nil
+		},
 	}
 
 	router := gin.Default()
-	router.POST("/verify", func(c *gin.Context) {
-		var verifyReq VerifyRequest
-
-		if err := c.ShouldBindJSON(&verifyReq); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		country, err := mockFunc(verifyReq.IP)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		allowed := false
-		for _, ac := range verifyReq.AllowedCountries {
-			if ac == country {
-				allowed = true
-				break
-			}
-		}
-
-		resp := VerifyResponse{
-			IP:      verifyReq.IP,
-			Country: country,
-			Allowed: allowed,
-		}
-		c.JSON(http.StatusOK, resp)
-	})
+	router.POST("/verify", VerifyIP(mockService))
 
 	reqBody := VerifyRequest{
 		IP:               "1.2.3.4",
@@ -133,15 +111,9 @@ func TestVerifyIP_Success_NotAllowed(t *testing.T) {
 func TestVerifyIP_InvalidJSON(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	mockService := &MockIPVerifierService{}
 	router := gin.Default()
-	router.POST("/verify", func(c *gin.Context) {
-		var verifyReq VerifyRequest
-		if err := c.ShouldBindJSON(&verifyReq); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{})
-	})
+	router.POST("/verify", VerifyIP(mockService))
 
 	req, _ := http.NewRequest("POST", "/verify", bytes.NewBufferString("invalid json"))
 	req.Header.Set("Content-Type", "application/json")
@@ -154,15 +126,9 @@ func TestVerifyIP_InvalidJSON(t *testing.T) {
 func TestVerifyIP_MissingRequiredFields(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
+	mockService := &MockIPVerifierService{}
 	router := gin.Default()
-	router.POST("/verify", func(c *gin.Context) {
-		var verifyReq VerifyRequest
-		if err := c.ShouldBindJSON(&verifyReq); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{})
-	})
+	router.POST("/verify", VerifyIP(mockService))
 
 	reqBody := VerifyRequest{
 		IP: "8.8.8.8",
@@ -181,40 +147,14 @@ func TestVerifyIP_MissingRequiredFields(t *testing.T) {
 func TestVerifyIP_RepoError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	mockFunc := func(ipAddress string) (string, error) {
-		return "", fmt.Errorf("invalid IP address: %s", ipAddress)
+	mockService := &MockIPVerifierService{
+		VerifyIPFunc: func(ctx context.Context, ip string, allowedCountries []string) (*domain.VerifyResult, error) {
+			return nil, fmt.Errorf("invalid IP address: %s", ip)
+		},
 	}
 
 	router := gin.Default()
-	router.POST("/verify", func(c *gin.Context) {
-		var verifyReq VerifyRequest
-
-		if err := c.ShouldBindJSON(&verifyReq); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		country, err := mockFunc(verifyReq.IP)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		allowed := false
-		for _, ac := range verifyReq.AllowedCountries {
-			if ac == country {
-				allowed = true
-				break
-			}
-		}
-
-		resp := VerifyResponse{
-			IP:      verifyReq.IP,
-			Country: country,
-			Allowed: allowed,
-		}
-		c.JSON(http.StatusOK, resp)
-	})
+	router.POST("/verify", VerifyIP(mockService))
 
 	reqBody := VerifyRequest{
 		IP:               "invalid-ip",
@@ -228,6 +168,5 @@ func TestVerifyIP_RepoError(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-
-	_ = fmt.Errorf("") // keep import
 }
+

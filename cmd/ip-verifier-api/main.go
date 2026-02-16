@@ -3,6 +3,7 @@ package main
 import (
 	"ip-verifier/internal/api/handler"
 	"ip-verifier/internal/repo"
+	"ip-verifier/internal/service"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +21,7 @@ func main() {
 	defer db.Close()
 
 	ipRepo := repo.NewIPVerifierRepo(db)
+	ipService := service.NewIPVerifierService(ipRepo)
 
 	router.GET("/api/v1/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -27,7 +29,7 @@ func main() {
 		})
 	})
 
-	router.POST("/api/v1/ip-verifier", handler.VerifyIP(ipRepo))
+	router.POST("/api/v1/ip-verifier", handler.VerifyIP(ipService))
 
 	router.Run(":8080")
 }

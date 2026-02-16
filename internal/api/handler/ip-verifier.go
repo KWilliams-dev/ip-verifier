@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"ip-verifier/internal/repo"
+	"ip-verifier/internal/domain"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +18,7 @@ type VerifyResponse struct {
 	Allowed bool   `json:"allowed"`
 }
 
-func VerifyIP(ipRepo *repo.IPVerifierRepo) gin.HandlerFunc {
+func VerifyIP(ipService domain.IPVerifierService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var verifyReq VerifyRequest
 
@@ -27,24 +27,16 @@ func VerifyIP(ipRepo *repo.IPVerifierRepo) gin.HandlerFunc {
 			return
 		}
 
-		country, err := ipRepo.GetCountryByIP(verifyReq.IP)
+		result, err := ipService.VerifyIP(c.Request.Context(), verifyReq.IP, verifyReq.AllowedCountries)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		allowed := false
-		for _, ac := range verifyReq.AllowedCountries {
-			if ac == country {
-				allowed = true
-				break
-			}
-		}
-
 		resp := VerifyResponse{
-			IP:      verifyReq.IP,
-			Country: country,
-			Allowed: allowed,
+			IP:      result.IP,
+			Country: result.Country,
+			Allowed: result.Allowed,
 		}
 		c.JSON(http.StatusOK, resp)
 	}

@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"testing"
 
 	"github.com/oschwald/geoip2-golang"
@@ -9,6 +10,7 @@ import (
 
 func TestGetCountryByIP_InvalidIP(t *testing.T) {
 	repo := NewIPVerifierRepo(nil)
+	ctx := context.Background()
 
 	tests := []struct {
 		name string
@@ -22,7 +24,7 @@ func TestGetCountryByIP_InvalidIP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			country, err := repo.GetCountryByIP(tt.ip)
+			country, err := repo.GetCountryByIP(ctx, tt.ip)
 			assert.Error(t, err)
 			assert.Empty(t, country)
 			assert.Contains(t, err.Error(), "invalid IP address")
@@ -40,6 +42,7 @@ func TestGetCountryByIP_ValidIP_WithRealDatabase(t *testing.T) {
 	defer db.Close()
 
 	repo := NewIPVerifierRepo(db)
+	ctx := context.Background()
 
 	tests := []struct {
 		name            string
@@ -52,11 +55,26 @@ func TestGetCountryByIP_ValidIP_WithRealDatabase(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			country, err := repo.GetCountryByIP(tt.ip)
+			country, err := repo.GetCountryByIP(ctx, tt.ip)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedCountry, country)
 		})
 	}
+}
+
+func TestHealthCheck(t *testing.T) {
+	db, err := geoip2.Open("../../data/GeoLite2-Country.mmdb")
+	if err != nil {
+		t.Skip("Skipping test: GeoLite2-Country.mmdb not found")
+		return
+	}
+	defer db.Close()
+
+	repo := NewIPVerifierRepo(db)
+	ctx := context.Background()
+
+	err = repo.HealthCheck(ctx)
+	assert.NoError(t, err)
 }
 
 func TestNewIPVerifierRepo(t *testing.T) {
@@ -69,5 +87,4 @@ func TestNewIPVerifierRepo(t *testing.T) {
 
 	repo := NewIPVerifierRepo(db)
 	assert.NotNil(t, repo)
-	assert.NotNil(t, repo.db)
 }
