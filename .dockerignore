@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Tests
+test/
+*_test.go
+
+# Environment files
+.env
+*.env
+
+# Data files (except the MMDB we need)
+data/*
+!data/GeoLite2-Country.mmdb
+
+# Kubernetes manifests
+k8s/
+
+# Scripts
+scripts/
+
+# Build artifacts
+ip-verifier-api
+bin/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Go build cache
+coverage.out
+*.test
