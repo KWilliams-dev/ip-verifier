@@ -11,6 +11,7 @@ type IPVerifierRepo interface {
 // IPVerifierService defines the interface for IP verification business logic
 type IPVerifierService interface {
 	VerifyIP(ctx context.Context, ip string, allowedCountries []string) (*VerifyResult, error)
+	HealthCheck(ctx context.Context) error
 }
 
 // VerifyResult represents the result of an IP verification
