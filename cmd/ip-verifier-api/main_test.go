@@ -11,7 +11,7 @@ import (
 
 func TestHealthEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	router := gin.Default()
 	router.GET("/api/v1/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
