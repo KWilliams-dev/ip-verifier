@@ -27,7 +27,7 @@ func TestGetCountryByIP_InvalidIP(t *testing.T) {
 			country, err := repo.GetCountryByIP(ctx, tt.ip)
 			assert.Error(t, err)
 			assert.Empty(t, country)
-			assert.Contains(t, err.Error(), "invalid IP address")
+			assert.Contains(t, err.Error(), "Invalid IP address")
 		})
 	}
 }
