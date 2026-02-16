@@ -7,7 +7,7 @@ import (
 	"ip-verifier/internal/config"
 	"ip-verifier/internal/repo"
 	"ip-verifier/internal/service"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,11 +18,24 @@ import (
 )
 
 func main() {
+	// Setup structured logging
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
 	}
+
+	slog.Info("Configuration loaded",
+		"port", cfg.Server.Port,
+		"environment", cfg.Server.Environment,
+		"geoip_path", cfg.Database.GeoIPPath,
+	)
 
 	// Set Gin mode based on environment
 	if cfg.IsProduction() {
@@ -32,23 +45,21 @@ func main() {
 	// Open GeoIP database
 	db, err := geoip2.Open(cfg.Database.GeoIPPath)
 	if err != nil {
-		log.Fatalf("Failed to open GeoIP database: %v", err)
+		slog.Error("Failed to open GeoIP database", "error", err, "path", cfg.Database.GeoIPPath)
+		os.Exit(1)
 	}
 	defer db.Close()
+	slog.Info("GeoIP database opened successfully")
 
 	// Initialize layers
 	ipRepo := repo.NewIPVerifierRepo(db)
 	ipService := service.NewIPVerifierService(ipRepo)
+	slog.Info("Application layers initialized")
 
 	// Setup router
 	router := gin.Default()
 
-	router.GET("/api/v1/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "ok",
-		})
-	})
-
+	router.GET("/api/v1/health", handler.HealthCheck(ipService))
 	router.POST("/api/v1/ip-verifier", handler.VerifyIP(ipService))
 
 	// Configure HTTP server
@@ -61,18 +72,22 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Starting server on %s (environment: %s)", cfg.GetAddress(), cfg.Server.Environment)
+		slog.Info("Starting server",
+			"address", cfg.GetAddress(),
+			"environment", cfg.Server.Environment,
+		)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Failed to start server: %v", err)
+			slog.Error("Server failed", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	sig := <-quit
 
-	log.Println("Shutting down server...")
+	slog.Info("Shutdown signal received", "signal", sig.String())
 
 	// Create shutdown context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
@@ -80,8 +95,8 @@ func main() {
 
 	// Attempt graceful shutdown
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+		slog.Error("Server forced to shutdown", "error", err)
 	} else {
-		log.Println("Server stopped gracefully")
+		slog.Info("Server stopped gracefully")
 	}
 }

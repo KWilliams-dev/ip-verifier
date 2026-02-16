@@ -15,7 +15,7 @@ func TestHealthEndpoint(t *testing.T) {
 	router := gin.Default()
 	router.GET("/api/v1/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"status": "ok",
+			"status": "healthy",
 		})
 	})
 
@@ -24,5 +24,5 @@ func TestHealthEndpoint(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.JSONEq(t, `{"status":"ok"}`, w.Body.String())
+	assert.JSONEq(t, `{"status":"healthy"}`, w.Body.String())
 }
