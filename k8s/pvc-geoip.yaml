@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: geoip-data
+  namespace: ip-verifier
+  labels:
+    app: ip-verifier
+    component: geoip-database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: hostpath  # Docker Desktop uses hostpath storage
+  resources:
+    requests:
+      storage: 100Mi  # GeoLite2-Country is ~6MB, 100Mi provides headroom

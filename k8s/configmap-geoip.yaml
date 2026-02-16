@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: geoip-config
+  namespace: ip-verifier
+  labels:
+    app: ip-verifier
+    component: geoip-updater
+data:
+  GEOIPUPDATE_FREQUENCY: "0"  # 0 = run once and exit (perfect for CronJob)
+  GEOIPUPDATE_VERBOSE: "1"  # Enable verbose logging for debugging

@@ -1,0 +1,154 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ip-verifier
+  namespace: ip-verifier
+  labels:
+    app: ip-verifier
+    version: v1
+spec:
+  replicas: 2
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0  # Always keep at least one pod running
+      maxSurge: 1        # Add one extra pod during rollout
+  
+  selector:
+    matchLabels:
+      app: ip-verifier
+  
+  template:
+    metadata:
+      labels:
+        app: ip-verifier
+        version: v1
+    spec:
+      # Security context for all containers
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532  # distroless nonroot user
+        fsGroup: 65532
+      
+      # Init container: Ensure MMDB exists before app starts
+      initContainers:
+      - name: geoip-init
+        image: maxmindinc/geoipupdate:v7.0.1
+        
+        envFrom:
+        - configMapRef:
+            name: geoip-config
+        
+        env:
+        - name: GEOIPUPDATE_ACCOUNT_ID
+          valueFrom:
+            secretKeyRef:
+              name: maxmind-credentials
+              key: GEOIPUPDATE_ACCOUNT_ID
+        - name: GEOIPUPDATE_LICENSE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: maxmind-credentials
+              key: GEOIPUPDATE_LICENSE_KEY
+        - name: GEOIPUPDATE_EDITION_IDS
+          valueFrom:
+            secretKeyRef:
+              name: maxmind-credentials
+              key: GEOIPUPDATE_EDITION_IDS
+        
+        volumeMounts:
+        - name: geoip-data
+          mountPath: /usr/share/GeoIP
+        
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
+      
+      # Main application container
+      containers:
+      - name: ip-verifier-api
+        image: ip-verifier:local  # Using local image for now
+        imagePullPolicy: IfNotPresent
+        
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        
+        env:
+        - name: PORT
+          value: "8080"
+        - name: GEOIP_DB_PATH
+          value: "/var/lib/geoip/GeoLite2-Country.mmdb"
+        - name: ENVIRONMENT
+          value: "production"
+        - name: READ_TIMEOUT
+          value: "10s"
+        - name: WRITE_TIMEOUT
+          value: "10s"
+        - name: SHUTDOWN_TIMEOUT
+          value: "30s"
+        
+        volumeMounts:
+        - name: geoip-data
+          mountPath: /var/lib/geoip
+          readOnly: true  # App should never modify the database
+        
+        # Liveness probe: Is the app running?
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        
+        # Readiness probe: Is the app ready to serve traffic?
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 2
+        
+        # Startup probe: For slow-starting apps
+        startupProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 0
+          periodSeconds: 2
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 30
+        
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "64Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        
+        # Graceful shutdown
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 5"]
+      
+      volumes:
+      - name: geoip-data
+        persistentVolumeClaim:
+          claimName: geoip-data

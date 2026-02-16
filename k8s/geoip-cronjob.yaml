@@ -1,0 +1,82 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: geoip-updater
+  namespace: ip-verifier
+  labels:
+    app: ip-verifier
+    component: geoip-updater
+spec:
+  # Schedule: Every Wednesday at 3:00 AM UTC
+  # MaxMind releases new databases on Tuesdays
+  schedule: "0 3 * * 3"
+  
+  # Keep last 3 successful and 1 failed job for troubleshooting
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  
+  # Don't start new job if previous still running
+  concurrencyPolicy: Forbid
+  
+  jobTemplate:
+    metadata:
+      labels:
+        app: ip-verifier
+        component: geoip-updater
+    spec:
+      # Retry failed updates up to 3 times
+      backoffLimit: 3
+      
+      # Clean up completed pods after 1 hour
+      ttlSecondsAfterFinished: 3600
+      
+      template:
+        metadata:
+          labels:
+            app: ip-verifier
+            component: geoip-updater
+        spec:
+          restartPolicy: OnFailure
+          
+          containers:
+          - name: geoipupdate
+            image: maxmindinc/geoipupdate:v7.0.1
+            
+            envFrom:
+            - configMapRef:
+                name: geoip-config
+            
+            env:
+            # Credentials from Kubernetes Secret
+            - name: GEOIPUPDATE_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: maxmind-credentials
+                  key: GEOIPUPDATE_ACCOUNT_ID
+            - name: GEOIPUPDATE_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: maxmind-credentials
+                  key: GEOIPUPDATE_LICENSE_KEY
+            - name: GEOIPUPDATE_EDITION_IDS
+              valueFrom:
+                secretKeyRef:
+                  name: maxmind-credentials
+                  key: GEOIPUPDATE_EDITION_IDS
+            
+            volumeMounts:
+            - name: geoip-data
+              mountPath: /usr/share/GeoIP
+            
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "64Mi"
+              limits:
+                cpu: "200m"
+                memory: "128Mi"
+          
+          volumes:
+          - name: geoip-data
+            persistentVolumeClaim:
+              claimName: geoip-data
