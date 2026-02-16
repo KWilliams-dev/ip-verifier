@@ -106,7 +106,7 @@ func TestVerifyIP_InvalidIPAddress(t *testing.T) {
 
 	var errorResp map[string]string
 	decodeJSON(t, resp, &errorResp)
-	assert.Contains(t, errorResp["error"], "invalid IP address")
+	assert.Contains(t, errorResp["error"], "Invalid IP address")
 }
 
 func TestVerifyIP_MissingRequiredFields(t *testing.T) {
