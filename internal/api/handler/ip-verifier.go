@@ -2,6 +2,7 @@ package handler
 
 import (
 	"ip-verifier/internal/domain"
+	apperrors "ip-verifier/internal/errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +30,9 @@ func VerifyIP(ipService domain.IPVerifierService) gin.HandlerFunc {
 
 		result, err := ipService.VerifyIP(c.Request.Context(), verifyReq.IP, verifyReq.AllowedCountries)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			status := apperrors.GetHTTPStatus(err)
+			message := apperrors.GetMessage(err)
+			c.JSON(status, gin.H{"error": message})
 			return
 		}
 
