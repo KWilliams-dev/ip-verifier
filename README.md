@@ -1,6 +1,6 @@
 # IP Verifier
 
-Production-ready microservice for IP address geolocation verification. Validates IP addresses against country allow-lists using MaxMind GeoIP2 databases with automated weekly updates.
+Microservice for IP address geolocation verification. Validates IP addresses against country allow-lists using MaxMind GeoIP2 databases with automated weekly updates.
 
 [![Go Version](https://img.shields.io/badge/Go-1.25-blue.svg)](https://golang.org)
 [![Docker](https://img.shields.io/badge/Docker-Ready-brightgreen.svg)](./Dockerfile)
@@ -328,8 +328,7 @@ See [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) for comprehensive testing docume
 - **[DEPLOYMENT_SUMMARY.md](./docs/DEPLOYMENT_SUMMARY.md)** - Complete deployment guide
 - **[TESTING_GUIDE.md](./docs/TESTING_GUIDE.md)** - Testing procedures and verification
 - **[MAKEFILE.md](./docs/MAKEFILE.md)** - Makefile command reference
-- **[geoip-update.md](./docs/geoip-update.md)** - Database update mechanism details
-
+- **[AI_USAGE.md](./docs/AI_USAGE.md)** - AI usage assessment
 ---
 
 ## 💻 Development
@@ -455,14 +454,6 @@ make k8s-restart
 
 ---
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ### Code Standards
 
 - Follow Go best practices and idioms
@@ -470,12 +461,6 @@ make k8s-restart
 - Update documentation for API changes
 - Use structured logging (slog)
 - Handle errors explicitly
-
----
-
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
@@ -495,4 +480,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Built with ❤️ using Go and Kubernetes**
