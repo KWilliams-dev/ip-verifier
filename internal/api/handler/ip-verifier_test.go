@@ -16,7 +16,7 @@ import (
 
 // MockIPVerifierService is a mock implementation of domain.IPVerifierService
 type MockIPVerifierService struct {
-	VerifyIPFunc   func(ctx context.Context, ip string, allowedCountries []string) (*domain.VerifyResult, error)
+	VerifyIPFunc    func(ctx context.Context, ip string, allowedCountries []string) (*domain.VerifyResult, error)
 	HealthCheckFunc func(ctx context.Context) error
 }
 
@@ -169,4 +169,3 @@ func TestVerifyIP_RepoError(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
-
